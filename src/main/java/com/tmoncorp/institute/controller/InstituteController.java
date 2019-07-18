@@ -38,9 +38,7 @@ public class InstituteController {
 
     @PutMapping("/{instituteCode}")
     public Institute updateInstitute(@PathVariable String instituteCode, @RequestBody Institute institute) throws Exception {
-        if (!instituteCode.equals(institute.getInstituteCode())) {
-            throw new InvalidArgumentException(instituteCode + ":" +institute.getInstituteCode() + "값이 다릅니다.");
-        }
+        institute.setInstituteCode(instituteCode);
         return instituteService.updateInstitute(institute);
     }
 }
