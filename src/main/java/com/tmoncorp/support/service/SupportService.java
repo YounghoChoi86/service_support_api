@@ -11,7 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -135,15 +137,10 @@ public class SupportService {
 
         List<Support> amountSumOfYearBank = groupAmounts.getMappedResults();
 
-        Support support =  amountSumOfYearBank.stream().max((e1, e2)-> {
-            if (e1.getAmount() == e2.getAmount()) {
-                return 0;
-            }
-            if (e1.getAmount() < e2.getAmount()) {
-                return -1;
-            }
-            return 1;
-        }).orElseThrow(() -> new SupportNotFouncException("최대 금액을 찾을 수 없습니다."));
+        //TODO compare 표현을 줄일 수 있으면 줄이자
+        Support support =  amountSumOfYearBank.stream().max((e1, e2)->
+            Long.compare(e1.getAmount(), e2.getAmount())
+        ).orElseThrow(() -> new SupportNotFouncException("최대 금액을 찾을 수 없습니다."));
 
         Institute institute =
                 instituteRepository.findById(support.getBank())
@@ -151,5 +148,35 @@ public class SupportService {
         log.info("maxAmountOfYear={}", support.getAmount());
 
         return new TopAmountBankOfYear(support.getYear(), institute.getInstituteName());
+    }
+
+    public AmountMinMaxOfBank getAmountMinMaxOfBank(String bankName) throws InstituteNotFoundException {
+        Institute institute = instituteRepository.findFirstByInstituteName(bankName)
+                .orElseThrow(() -> new InstituteNotFoundException(bankName));
+
+        String instituteCode = institute.getInstituteCode();
+        AggregationOperation match = Aggregation.match(Criteria.where("bank").is(instituteCode));
+
+        Aggregation agg =
+                newAggregation(match, group("year", "bank").sum("amount").as("amount"),
+                        sort(Sort.Direction.DESC, "year", "bank"));
+
+        AggregationResults<SupportAmount> groupAmounts = mongoTemplate
+                .aggregate(agg, Support.class, SupportAmount.class);
+
+        List<SupportAmount> supportAmounts = groupAmounts.getMappedResults();
+
+        for (SupportAmount supportAmount : supportAmounts) {
+            log.debug("SupportAmount={}", supportAmount);
+        }
+        List<SupportAmount> minMaxSupportAmounts = new ArrayList<>(2);
+        //TODO compare 표현을 줄일 수 있으면 줄이자
+        minMaxSupportAmounts.add(supportAmounts.stream().min((e1, e2) -> Long.compare(e1.getAmount(), e2.getAmount())).orElse(new SupportAmount()));
+        minMaxSupportAmounts.add(supportAmounts.stream().max((e1, e2) -> Long.compare(e1.getAmount(), e2.getAmount())).orElse(new SupportAmount()));
+        AmountMinMaxOfBank amountMinMaxOfBank = new AmountMinMaxOfBank();
+        amountMinMaxOfBank.setBank(bankName);
+        amountMinMaxOfBank.setSupportAmount(minMaxSupportAmounts);
+
+        return amountMinMaxOfBank;
     }
 }

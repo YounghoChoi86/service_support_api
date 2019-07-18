@@ -39,4 +39,9 @@ public class SupportController {
     public TopAmountBankOfYear getTopBankOfYear() throws Exception {
         return supportService.getTopBankOfYear();
     }
+
+    @GetMapping("/amountMinMax")
+    public AmountMinMaxOfBank getAmountOfMinMaxOfBank(@RequestParam String bank) throws Exception {
+        return supportService.getAmountMinMaxOfBank(bank);
+    }
 }
