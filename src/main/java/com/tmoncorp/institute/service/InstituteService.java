@@ -20,20 +20,17 @@ public class InstituteService {
     private SequenceGeneratorService sequenceGeneratorService;
 
     public Institute deleteInstitute(final String instituteCode) throws InstituteNotFoundException {
-        Optional<Institute> optionalInstitute = instituteRepository.findById(instituteCode);
+        Institute institute = instituteRepository.findById(instituteCode)
+                .orElseThrow(() -> new InstituteNotFoundException(instituteCode));
 
-        optionalInstitute.orElseThrow(() -> new InstituteNotFoundException(instituteCode));
+        instituteRepository.deleteById(institute.getInstituteCode());
 
-        optionalInstitute.ifPresent((institute) -> instituteRepository.deleteById(institute.getInstituteCode()));
-
-        return optionalInstitute.get();
+        return institute;
     }
 
     public Institute createInstitute(final Institute institute) throws InstituteDuplicationException {
 
-        Optional<Institute> optionalInstitute = instituteRepository.findFirstByInstituteName(institute.getInstituteName());
-
-        if (optionalInstitute.isPresent()) {
+        if (isExistInstituteName(institute.getInstituteName())) {
             throw new InstituteDuplicationException("InstituteName : " + institute.getInstituteName() + "는 이미 존재합니다.");
         }
 
@@ -54,19 +51,14 @@ public class InstituteService {
 
     public boolean isExistInstituteName(final String instituteName) {
         Optional<Institute> optionalInstitute = instituteRepository.findFirstByInstituteName(instituteName);
-
         return optionalInstitute.isPresent();
     }
 
 
     public Institute updateInstitute(final Institute institute) throws InstituteDuplicationException {
-
-        Optional<Institute> optionalInstitute = instituteRepository.findFirstByInstituteName(institute.getInstituteName());
-
-        if (optionalInstitute.isPresent()) {
+        if (isExistInstituteName(institute.getInstituteName())) {
             throw new InstituteDuplicationException("InstituteName : " + institute.getInstituteName() + "은 이미 존재합니다.");
         }
-
         return instituteRepository.save(institute);
     }
 

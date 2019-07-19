@@ -55,7 +55,6 @@ public class SupportService {
         log.debug("month = {}", supportBulkInfo.getMonth());
         log.debug("detailAmount={}", detailAmountMap);
 
-
         for (String bankName : detailAmountMap.keySet()) {
             Optional<Institute> instituteOptional =
                     instituteRepository.findFirstByInstituteName(bankName);
@@ -99,12 +98,14 @@ public class SupportService {
                 supportsOfYear.add(e);
             }
         });
-        //TODO ProxyCash Service
+        //TODO make ProxyCashInstituteService
         List<Institute> instituteList = instituteRepository.findAll();
-        final Map<String, String> instituteCodeToNameMap
-                = instituteList.stream().collect(Collectors.toMap(Institute::getInstituteCode, Institute::getInstituteName));
-        log.info("supportMap={}", supportMap);
 
+        final Map<String, String> instituteCodeToNameMap
+                = instituteList.stream()
+                .collect(Collectors.toMap(Institute::getInstituteCode, Institute::getInstituteName));
+
+        log.info("supportMap={}", supportMap);
         List<SupportsOfYear> supportsOfYearList =
                 supportMap.keySet().stream()
                         .map(e -> supportMap.get(e))
@@ -112,7 +113,12 @@ public class SupportService {
                             SupportsOfYear supportsOfYear = new SupportsOfYear();
                             long totalAmount = e.stream().mapToLong(k -> k.getAmount()).sum();
                             Map<String, Long>  detailAmount = e.stream()
-                                    .collect(Collectors.toMap(entity -> instituteCodeToNameMap.get(entity.getBank()), Support::getAmount));
+                                    .map(support -> {
+                                        log.info("support={}", support);
+                                        support.setBank(instituteCodeToNameMap.get(support.getBank()));
+                                        return support;
+                                    })
+                                    .collect(Collectors.toMap(Support::getBank, Support::getAmount));
                             supportsOfYear.setTotalAmount(totalAmount);
                             supportsOfYear.setDetailAmount(detailAmount);
                             supportsOfYear.setYear(e.get(0).getYear());
