@@ -1,4 +1,4 @@
-package com.tmoncorp.institute;
+package com.tmoncorp.institute.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringRunner.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-public class InstituteApplicationTests {
+public class InstituteControllerTests {
 	@Autowired
 	private ObjectMapper objectMapper;
 	@Autowired
@@ -92,6 +92,12 @@ public class InstituteApplicationTests {
 		mockMvc.perform(get("/institutes/" + NOT_EXIST_INSTITUTE_CODE))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("code").value(HttpStatus.NOT_FOUND.value()));
+	}
+
+	@Test
+	public void 기관목록_가져오기_태스트() throws Exception {
+		mockMvc.perform(get("/institutes"))
+				.andExpect(status().isOk());
 	}
 
 }
