@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Slf4j
 @RunWith(SpringRunner.class)
-@SpringBootTest
+@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 public class InstituteControllerTests {
 	@Autowired
@@ -99,5 +99,4 @@ public class InstituteControllerTests {
 		mockMvc.perform(get("/institutes"))
 				.andExpect(status().isOk());
 	}
-
 }

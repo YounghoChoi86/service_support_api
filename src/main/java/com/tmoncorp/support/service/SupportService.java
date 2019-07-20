@@ -33,6 +33,8 @@ public class SupportService {
     @Autowired
     private InstituteRepository instituteRepository;
 
+    private static final String SUFFIX_OF_YEAR = "년";
+
     public Support createSupport(Support support) throws InstituteNotFoundException{
         Optional<Institute> optionalInstitute
                 = instituteRepository.findFirstByInstituteName(support.getBank());
@@ -121,7 +123,7 @@ public class SupportService {
                                     .collect(Collectors.toMap(Support::getBank, Support::getAmount));
                             supportsOfYear.setTotalAmount(totalAmount);
                             supportsOfYear.setDetailAmount(detailAmount);
-                            supportsOfYear.setYear(e.get(0).getYear());
+                            supportsOfYear.setYear(e.get(0).getYear() + SUFFIX_OF_YEAR);
                             log.debug("supportsOfYear={}", supportsOfYear);
                             return supportsOfYear;
                 }).collect(Collectors.toList());
@@ -184,5 +186,14 @@ public class SupportService {
         amountMinMaxOfBank.setSupportAmount(minMaxSupportAmounts);
 
         return amountMinMaxOfBank;
+    }
+
+    public Support deleteSupport(String supportId) throws SupportNotFouncException {
+        Support support = supportRepository.findById(supportId)
+                .orElseThrow(() -> new SupportNotFouncException("id 값이 존재하지 않습니다 id:" + supportId));
+
+        supportRepository.deleteById(supportId);
+
+        return support;
     }
 }
