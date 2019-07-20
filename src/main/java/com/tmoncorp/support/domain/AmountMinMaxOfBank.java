@@ -5,15 +5,13 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
-import java.util.Map;
-
+import java.util.List;
 
 @ToString
 @Getter
 @Setter
-public class SupportBulkInfo {
-    private int year;
-    private int month;
-    @JsonProperty("detail_amount")
-    Map<String, Long> detailAmount;
+public class AmountMinMaxOfBank {
+    private String bank;
+    @JsonProperty("support_amount")
+    private List<SupportAmount> supportAmount;
 }

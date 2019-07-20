@@ -11,7 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -30,6 +32,8 @@ public class SupportService {
 
     @Autowired
     private InstituteRepository instituteRepository;
+
+    private static final String SUFFIX_OF_YEAR = "년";
 
     public Support createSupport(Support support) throws InstituteNotFoundException{
         Optional<Institute> optionalInstitute
@@ -52,7 +56,6 @@ public class SupportService {
         log.debug("year = {}", supportBulkInfo.getYear());
         log.debug("month = {}", supportBulkInfo.getMonth());
         log.debug("detailAmount={}", detailAmountMap);
-
 
         for (String bankName : detailAmountMap.keySet()) {
             Optional<Institute> instituteOptional =
@@ -97,12 +100,14 @@ public class SupportService {
                 supportsOfYear.add(e);
             }
         });
-        //TODO ProxyCash Service
+        //TODO make ProxyCashInstituteService
         List<Institute> instituteList = instituteRepository.findAll();
-        final Map<String, String> instituteCodeToNameMap
-                = instituteList.stream().collect(Collectors.toMap(Institute::getInstituteCode, Institute::getInstituteName));
-        log.info("supportMap={}", supportMap);
 
+        final Map<String, String> instituteCodeToNameMap
+                = instituteList.stream()
+                .collect(Collectors.toMap(Institute::getInstituteCode, Institute::getInstituteName));
+
+        log.info("supportMap={}", supportMap);
         List<SupportsOfYear> supportsOfYearList =
                 supportMap.keySet().stream()
                         .map(e -> supportMap.get(e))
@@ -110,10 +115,15 @@ public class SupportService {
                             SupportsOfYear supportsOfYear = new SupportsOfYear();
                             long totalAmount = e.stream().mapToLong(k -> k.getAmount()).sum();
                             Map<String, Long>  detailAmount = e.stream()
-                                    .collect(Collectors.toMap(entity -> instituteCodeToNameMap.get(entity.getBank()), Support::getAmount));
+                                    .map(support -> {
+                                        log.info("support={}", support);
+                                        support.setBank(instituteCodeToNameMap.get(support.getBank()));
+                                        return support;
+                                    })
+                                    .collect(Collectors.toMap(Support::getBank, Support::getAmount));
                             supportsOfYear.setTotalAmount(totalAmount);
                             supportsOfYear.setDetailAmount(detailAmount);
-                            supportsOfYear.setYear(e.get(0).getYear());
+                            supportsOfYear.setYear(e.get(0).getYear() + SUFFIX_OF_YEAR);
                             log.debug("supportsOfYear={}", supportsOfYear);
                             return supportsOfYear;
                 }).collect(Collectors.toList());
@@ -135,15 +145,10 @@ public class SupportService {
 
         List<Support> amountSumOfYearBank = groupAmounts.getMappedResults();
 
-        Support support =  amountSumOfYearBank.stream().max((e1, e2)-> {
-            if (e1.getAmount() == e2.getAmount()) {
-                return 0;
-            }
-            if (e1.getAmount() < e2.getAmount()) {
-                return -1;
-            }
-            return 1;
-        }).orElseThrow(() -> new SupportNotFouncException("최대 금액을 찾을 수 없습니다."));
+        //TODO compare 표현을 줄일 수 있으면 줄이자
+        Support support =  amountSumOfYearBank.stream().max((e1, e2)->
+            Long.compare(e1.getAmount(), e2.getAmount())
+        ).orElseThrow(() -> new SupportNotFouncException("최대 금액을 찾을 수 없습니다."));
 
         Institute institute =
                 instituteRepository.findById(support.getBank())
@@ -151,5 +156,44 @@ public class SupportService {
         log.info("maxAmountOfYear={}", support.getAmount());
 
         return new TopAmountBankOfYear(support.getYear(), institute.getInstituteName());
+    }
+
+    public AmountMinMaxOfBank getAmountMinMaxOfBank(String bankName) throws InstituteNotFoundException {
+        Institute institute = instituteRepository.findFirstByInstituteName(bankName)
+                .orElseThrow(() -> new InstituteNotFoundException(bankName));
+
+        String instituteCode = institute.getInstituteCode();
+        AggregationOperation match = Aggregation.match(Criteria.where("bank").is(instituteCode));
+
+        Aggregation agg =
+                newAggregation(match, group("year", "bank").sum("amount").as("amount"),
+                        sort(Sort.Direction.DESC, "year", "bank"));
+
+        AggregationResults<SupportAmount> groupAmounts = mongoTemplate
+                .aggregate(agg, Support.class, SupportAmount.class);
+
+        List<SupportAmount> supportAmounts = groupAmounts.getMappedResults();
+
+        for (SupportAmount supportAmount : supportAmounts) {
+            log.debug("SupportAmount={}", supportAmount);
+        }
+        List<SupportAmount> minMaxSupportAmounts = new ArrayList<>(2);
+        //TODO compare 표현을 줄일 수 있으면 줄이자
+        minMaxSupportAmounts.add(supportAmounts.stream().min((e1, e2) -> Long.compare(e1.getAmount(), e2.getAmount())).orElse(new SupportAmount()));
+        minMaxSupportAmounts.add(supportAmounts.stream().max((e1, e2) -> Long.compare(e1.getAmount(), e2.getAmount())).orElse(new SupportAmount()));
+        AmountMinMaxOfBank amountMinMaxOfBank = new AmountMinMaxOfBank();
+        amountMinMaxOfBank.setBank(bankName);
+        amountMinMaxOfBank.setSupportAmount(minMaxSupportAmounts);
+
+        return amountMinMaxOfBank;
+    }
+
+    public Support deleteSupport(String supportId) throws SupportNotFouncException {
+        Support support = supportRepository.findById(supportId)
+                .orElseThrow(() -> new SupportNotFouncException("id 값이 존재하지 않습니다 id:" + supportId));
+
+        supportRepository.deleteById(supportId);
+
+        return support;
     }
 }

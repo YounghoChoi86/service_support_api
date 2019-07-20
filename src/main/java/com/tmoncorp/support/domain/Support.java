@@ -6,8 +6,6 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import javax.persistence.Column;
-
 
 @ToString
 @Getter
@@ -26,6 +24,5 @@ public class Support {
     private int year;
     private int month;
     private String bank;
-    @Column(nullable = false)
     private long amount;
 }

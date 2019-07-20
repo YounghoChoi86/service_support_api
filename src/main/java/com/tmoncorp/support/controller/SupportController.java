@@ -30,13 +30,26 @@ public class SupportController {
         return supportService.createSupportBulkInfo(supportBulkInfo);
     }
 
+    @DeleteMapping("/{supportId}")
+    public Support deleteSupport(@PathVariable String supportId) throws Exception {
+        log.debug("supportId = ({})", supportId);
+        return supportService.deleteSupport(supportId);
+    }
+
     @GetMapping("/totalsOfYears")
     public SupportsOfYears getSupportsOfYears() throws Exception {
-        return supportService.getSupportsOfYears();
+        SupportsOfYears supportsOfYears = supportService.getSupportsOfYears();
+        log.info("before return response= {}", supportsOfYears);
+        return supportsOfYears;
     }
 
     @GetMapping("/topAmountBankOfYear")
     public TopAmountBankOfYear getTopBankOfYear() throws Exception {
         return supportService.getTopBankOfYear();
+    }
+
+    @GetMapping("/amountMinMax")
+    public AmountMinMaxOfBank getAmountOfMinMaxOfBank(@RequestParam String bank) throws Exception {
+        return supportService.getAmountMinMaxOfBank(bank);
     }
 }
