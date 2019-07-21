@@ -5,27 +5,20 @@ import com.tmoncorp.institute.exception.InstituteNotFoundException;
 import com.tmoncorp.institute.repository.InstituteRepository;
 import com.tmoncorp.support.domain.*;
 import com.tmoncorp.support.exception.SupportNotFouncException;
+import com.tmoncorp.support.repository.SupportAggregationRespository;
 import com.tmoncorp.support.repository.SupportRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-
 @Slf4j
 @Service
 public class SupportService {
     @Autowired
-    private MongoTemplate mongoTemplate;
+    private SupportAggregationRespository supportAggregationRespository;
 
     @Autowired
     private SupportRepository supportRepository;
@@ -75,15 +68,8 @@ public class SupportService {
     }
 
     public SupportsOfYears getSupportsOfYears() {
-        //TODO MongoRepository로 옮길 것..
-        Aggregation agg =
-                newAggregation(group("year", "bank").sum("amount").as("amount"),
-                        sort(Sort.Direction.DESC, "year", "bank"));
-
-        AggregationResults<Support> groupAmounts = mongoTemplate
-                .aggregate(agg, Support.class, Support.class);
-
-        List<Support> amountSumOfYearBank = groupAmounts.getMappedResults();
+        List<Support> amountSumOfYearBank =
+                supportAggregationRespository.selectSupportListAggregationSumAmountGroupYearBank();
 
         Map<Integer, List<Support>> supportMap = new TreeMap<>();
 
@@ -135,15 +121,9 @@ public class SupportService {
     }
 
     public TopAmountBankOfYear getTopBankOfYear() throws SupportNotFouncException, InstituteNotFoundException{
-        //TODO MongoRepository로 옮길 것..
-        Aggregation agg =
-                newAggregation(group("year", "bank").sum("amount").as("amount"),
-                        sort(Sort.Direction.DESC, "year", "bank"));
+        List<Support> amountSumOfYearBank =
+                supportAggregationRespository.selectSupportListAggregationSumAmountGroupYearBank();
 
-        AggregationResults<Support> groupAmounts = mongoTemplate
-                .aggregate(agg, Support.class, Support.class);
-
-        List<Support> amountSumOfYearBank = groupAmounts.getMappedResults();
 
         //TODO compare 표현을 줄일 수 있으면 줄이자
         Support support =  amountSumOfYearBank.stream()
@@ -163,33 +143,19 @@ public class SupportService {
         Institute institute = instituteRepository.findFirstByInstituteName(bankName)
                 .orElseThrow(() -> new InstituteNotFoundException(bankName));
 
-        String instituteCode = institute.getInstituteCode();
-        AggregationOperation match = Aggregation.match(Criteria.where("bank").is(instituteCode));
+        List<SupportAmount> supportAmounts =
+                supportAggregationRespository.selectSupportListAggregationAvgAmountGroupYearBank(institute.getInstituteCode());
 
-        Aggregation agg =
-                newAggregation(match, group("year", "bank").avg("amount").as("amount"),
-                        sort(Sort.Direction.DESC, "year", "bank"));
-
-        AggregationResults<SupportAmount> groupAmounts = mongoTemplate
-                .aggregate(agg, Support.class, SupportAmount.class);
-
-        List<SupportAmount> supportAmounts = groupAmounts.getMappedResults();
-
-        for (SupportAmount supportAmount : supportAmounts) {
-            log.debug("SupportAmount={}", supportAmount);
-        }
         List<SupportAmount> minMaxSupportAmounts = new ArrayList<>(2);
-        //TODO compare 표현을 줄일 수 있으면 줄이자
 
+        //TODO compare 표현을 줄일 수 있으면 줄이자
         SupportAmount minSupportAmount =
                 supportAmounts.stream()
                         .min((e1, e2) -> Double.compare(e1.getAmount(), e2.getAmount()))
                         .orElse(new SupportAmount());
-
         minSupportAmount.setRoundedAmount(Math.round(minSupportAmount.getAmount()));
+
         minMaxSupportAmounts.add(minSupportAmount);
-
-
         SupportAmount maxSupportAmount = supportAmounts.stream()
                 .max((e1, e2) -> Double.compare(e1.getAmount(), e2.getAmount()))
                 .orElse(new SupportAmount());
