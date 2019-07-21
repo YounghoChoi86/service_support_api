@@ -19,7 +19,7 @@
 5. 테스트 데이터 생성 및 jar 파일 생성
 > ./mvnw install 
 6. Spring Boot 실행
-> cd target 
+> cd target   
 > java -jar service-support-api-0.0.1-SNAPSHOT.jar
 
 
