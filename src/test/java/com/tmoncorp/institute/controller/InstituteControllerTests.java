@@ -51,6 +51,7 @@ public class InstituteControllerTests {
 	private static final String TEST_INSTITUTE_NAME = "테스트은행";
 	private static final String DUPLICATED_INSTITUTE_NAME = "외환은행";
 	private static final String NOT_EXIST_INSTITUTE_CODE = "TEST444444000";
+	private static int index = 0;
 
 	@Before
 	public void setUp() {
@@ -68,9 +69,11 @@ public class InstituteControllerTests {
 				.content("{\"instituteName\":\"" + TEST_INSTITUTE_NAME +  "\"}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("instituteCode").exists())
-				.andExpect(jsonPath("instituteName").value(TEST_INSTITUTE_NAME));
+				.andExpect(jsonPath("instituteName").value(TEST_INSTITUTE_NAME))
+				.andDo(document("institute" + index++));
 
-		ResultActions resultActions = mockMvc.perform(get("/institutes"));
+		ResultActions resultActions = mockMvc.perform(get("/institutes"))
+				.andDo(document("institute" + index++));
 		MvcResult mvcResult = resultActions.andReturn();
 
 		resultActions.andExpect(status().isOk());
@@ -89,16 +92,17 @@ public class InstituteControllerTests {
 				.content("{\"instituteCode\":\""  + targetInstitute.getInstituteCode() + "\",\"instituteName\":\"" + TEST_INSTITUTE_NAME + 2 + "\"}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("instituteCode").exists())
-				.andExpect(jsonPath("instituteName").value(TEST_INSTITUTE_NAME + 2));
+				.andExpect(jsonPath("instituteName").value(TEST_INSTITUTE_NAME + 2))
+				.andDo(document("institute" + index++));
+
 
 		//삭제 시에 update 확인(instituteName : "테스트은행")
 		mockMvc.perform(delete("/institutes/" + targetInstitute.getInstituteCode())
-				.accept(MediaType.APPLICATION_JSON)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"instituteName\":\"" + TEST_INSTITUTE_NAME + "\"}"))
+				.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("instituteCode").exists())
-				.andExpect(jsonPath("instituteName").value(TEST_INSTITUTE_NAME + 2));
+				.andExpect(jsonPath("instituteName").value(TEST_INSTITUTE_NAME + 2))
+				.andDo(document("institute" + index++));
 	}
 
 	@Test
@@ -109,7 +113,7 @@ public class InstituteControllerTests {
 				"{\"instituteName\":\"" + DUPLICATED_INSTITUTE_NAME + "\"}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("code").value(HttpStatus.BAD_REQUEST.value()))
-				.andDo(document("error"));/*
+				.andDo(document("institute" + index++));/*
 						responseFields(fieldWithPath("code")
 								.description("Http Response 코드")),
 						responseFields(fieldWithPath("message")
@@ -122,8 +126,7 @@ public class InstituteControllerTests {
 				.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("code").value(HttpStatus.NOT_FOUND.value()))
-				.andDo(document("index"));
-
+				.andDo(document("institute" + index++));
 	}
 
 	@Test
@@ -132,7 +135,7 @@ public class InstituteControllerTests {
 				.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("code").value(HttpStatus.NOT_FOUND.value()))
-				.andDo(document("index"));
+				.andDo(document("institute" + index++));
 	}
 
 	@Test
@@ -140,6 +143,7 @@ public class InstituteControllerTests {
 		mockMvc.perform(get("/institutes")
 				.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
-				.andDo(document("index"));
+				.andDo(document("institute" + index++));
 	}
+
 }

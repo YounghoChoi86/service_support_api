@@ -47,11 +47,12 @@ public class SupportControllerTests {
     private ObjectMapper objectMapper;
     @Autowired
     private SupportRepository supportRepository;
-
     @Rule
     public JUnitRestDocumentation restDocumentation = new JUnitRestDocumentation();
     @Autowired
     private WebApplicationContext context;
+
+    private static int index = 0;
 
     private static final List<String> institutes =
             Arrays.asList(new String[]{"주택도시기금", "국민은행", "우리은행", "신한은행", "한국시티은행",
@@ -112,7 +113,8 @@ public class SupportControllerTests {
             ResultActions resultActions = mockMvc.perform(post("/supports/bulk").contentType(MediaType.APPLICATION_JSON)
                     .content(jsonSupportBulkbody)).andExpect(status().isCreated());
             if (requestCount == 0) {
-                resultActions.andDo(document("support"));
+                resultActions
+                        .andDo(document("support" + index++));
             }
             requestCount++;
         }
@@ -164,7 +166,7 @@ public class SupportControllerTests {
         String jsonBody = objectMapper.writeValueAsString(support);
         String responseBody = mockMvc.perform(post("/supports").contentType(MediaType.APPLICATION_JSON)
             .content(jsonBody)).andExpect(status().isCreated())
-                .andDo(document("support"))
+                .andDo(document("support" + index++))
                 .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
@@ -179,7 +181,7 @@ public class SupportControllerTests {
                 .andExpect(jsonPath("month").value(support.getMonth()))
                 .andExpect(jsonPath("bank").isString())
                 .andExpect(jsonPath("amount").value(support.getAmount()))
-                .andDo(document("support"));
+                .andDo(document("support" + index++));
     }
 
     @Test
@@ -194,7 +196,7 @@ public class SupportControllerTests {
                 .content(jsonBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("message").isString())
-                .andDo(document("support"))
+                .andDo(document("support" + index++))
                 .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
@@ -208,7 +210,7 @@ public class SupportControllerTests {
                 .content(jsonBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("message").isString())
-                .andDo(document("support"))
+                .andDo(document("support" + index++))
                 .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
@@ -226,7 +228,7 @@ public class SupportControllerTests {
                 .content(jsonBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("message").isString())
-                .andDo(document("support"))
+                .andDo(document("support" + index++))
                 .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
@@ -240,7 +242,7 @@ public class SupportControllerTests {
                 .content(jsonBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("message").isString())
-                .andDo(document("support"))
+                .andDo(document("support" + index++))
                 .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
@@ -260,6 +262,7 @@ public class SupportControllerTests {
                 .content(jsonBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("message").isString())
+                .andDo(document("support" + index++))
                 .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
@@ -275,7 +278,7 @@ public class SupportControllerTests {
                 .content(jsonBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("message").isString())
-                .andDo(document("support"))
+                .andDo(document("support" + index++))
                 .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
@@ -293,7 +296,7 @@ public class SupportControllerTests {
                 .content(jsonBody))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("message").isString())
-                .andDo(document("support"))
+                .andDo(document("support" + index++))
                 .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
@@ -306,7 +309,7 @@ public class SupportControllerTests {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("code").value(HttpStatus.NOT_FOUND.value()))
                 .andExpect(jsonPath("message").isString())
-                .andDo(document("support"));
+                .andDo(document("support" + index++));
     }
 
     @Test
@@ -315,7 +318,7 @@ public class SupportControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("name").value("주택기금정보"))
                 .andExpect(jsonPath("supports_of_years").exists())
-                .andDo(document("support"));
+                .andDo(document("support" + index++));
     }
 
     @Test
@@ -324,7 +327,7 @@ public class SupportControllerTests {
         mockMvc.perform(get("/supports/amountMinMax?bank=" + bankName))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("bank").value(bankName))
-                .andDo(document("support"));
+                .andDo(document("support" + index++));
     }
 
     @Test
@@ -333,6 +336,6 @@ public class SupportControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("year").exists())
                 .andExpect(jsonPath("bank").exists())
-                .andDo(document("support"));
+                .andDo(document("support" + index++));
     }
 }
