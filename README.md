@@ -105,7 +105,7 @@ Content-Length: 3514
   
 4) 전체년도에서 특정은행의 지원금액 평균 중에 가장 큰 금액과 작은 금액을 출력하는 API  
 -요청 : instituteName = 기관명으로 URLEncoding 형식  
-GET /supports/amountMinMax?{instituteName} HTTP/1.1  
+GET /supports/amountMinMax?bank={instituteName} HTTP/1.1  
 Host: localhost:8080  
   
 -요청 예제 - 외환은행  
