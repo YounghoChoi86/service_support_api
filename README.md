@@ -1,4 +1,18 @@
 # service_support_api  
+
+macos 기준 실행 방법
+
+1. mongodb 설치 터미널 오픈
+> brew install mongodb
+2. 터미널 오픈 아래 명령어 실행하여 mongod 실행
+> nohup mongod & 
+3. 소스 다운로드 터미널에서 아래 명령어 실행
+> git clone git@github.com:YounghoChoi86/service_support_api.git 
+4. Spring Boot 실행
+> cd service_support_api
+>  ./mvnw spring-boot:run 
+
+
 1. 지원금 api 명세  
 1) 파일 레코드에 해당하는 지원금 생성 api   
 -요청 예제  
