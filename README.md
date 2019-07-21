@@ -1,6 +1,6 @@
 # service_support_api  
 
-테스트 실행 시 csv 파일에서 각 레코드를 READ하여 각 연도별 월별 지원금을 생성함
+테스트 실행 시 csv 파일에서 각 레코드를 READ하여 각 연도별 월별 지원금을 생성털
 
 build 환경 : jdk 1.8.0_191  
             maven 3.6.0  
@@ -14,9 +14,13 @@ macos 기준 실행 방법
 > nohup mongod & 
 3. 소스 다운로드 터미널에서 아래 명령어 실행
 > git clone git@github.com:YounghoChoi86/service_support_api.git 
-4. Spring Boot 실행
-> cd service_support_api
->  ./mvnw spring-boot:run 
+4. 디렉토리 생성
+>  cd service_support_api && mkdir src/main/asccidoc
+5. 테스트 데이터 생성 및 jar 파일 생성
+> ./mvnw install 
+6. Spring Boot 실행
+> cd target 
+> java -jar service-support-api-0.0.1-SNAPSHOT.jar
 
 
 1. 지원금 api 명세  
