@@ -2,11 +2,12 @@
 
 테스트 실행 시 csv 파일에서 각 레코드를 READ하여 각 연도별 월별 지원금을 생성털
 
-build 환경 : jdk 1.8.0_191  
+-framework : spring boot 2.1.6 RELEASE
+-build 환경 : jdk 1.8.0_191  
             maven 3.6.0  
-mongodb version v4.0.4
+-mongodb version v4.0.4
 
-macos 기준 실행 방법
+-macos 기준 실행 방법
 
 1. mongodb 설치 터미널 오픈
 > brew install mongodb
