@@ -2,6 +2,7 @@ package com.tmoncorp.support.controller;
 
 import com.tmoncorp.support.domain.*;
 import com.tmoncorp.support.service.SupportService;
+import com.tmoncorp.support.service.SupportValidationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,11 +16,14 @@ import java.util.List;
 public class SupportController {
     @Autowired
     private SupportService supportService;
+    @Autowired
+    private SupportValidationService supportValidationService;
 
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     public Support createSupport(@RequestBody Support support) throws Exception {
         log.debug("Support=({})", support);
+        supportValidationService.checkSupport(support);
         return supportService.createSupport(support);
     }
 
@@ -27,12 +31,14 @@ public class SupportController {
     @PostMapping("/bulk")
     public List<Support> createSupportInfos(@RequestBody SupportBulkInfo supportBulkInfo) throws Exception {
         log.debug("SupportBulkInfo=()", supportBulkInfo);
+        supportValidationService.checkSupportBulkInfo(supportBulkInfo);
         return supportService.createSupportBulkInfo(supportBulkInfo);
     }
 
     @DeleteMapping("/{supportId}")
     public Support deleteSupport(@PathVariable String supportId) throws Exception {
         log.debug("supportId = ({})", supportId);
+        supportValidationService.checkStringParamWidthName("supportId", supportId);
         return supportService.deleteSupport(supportId);
     }
 
@@ -50,6 +56,7 @@ public class SupportController {
 
     @GetMapping("/amountMinMax")
     public AmountMinMaxOfBank getAmountOfMinMaxOfBank(@RequestParam String bank) throws Exception {
+        supportValidationService.checkBank(bank);
         return supportService.getAmountMinMaxOfBank(bank);
     }
 }

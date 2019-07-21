@@ -1,5 +1,7 @@
 package com.tmoncorp.support.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 @ToString
@@ -9,5 +11,8 @@ import lombok.*;
 @NoArgsConstructor
 public class SupportAmount {
     private int year;
-    private long amount;
+    @JsonIgnore
+    private double amount;
+    @JsonProperty("amount")
+    private long roundedAmount;
 }

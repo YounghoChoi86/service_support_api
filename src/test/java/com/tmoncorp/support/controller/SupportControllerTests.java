@@ -1,7 +1,7 @@
 package com.tmoncorp.support.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.javaws.exceptions.InvalidArgumentException;
+
 import com.tmoncorp.support.domain.Support;
 import com.tmoncorp.support.domain.SupportBulkInfo;
 import com.tmoncorp.support.repository.SupportRepository;
@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,11 +18,19 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.JUnitRestDocumentation;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+import javax.validation.ValidationException;
 import java.io.*;
 import java.util.*;
 
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,11 +48,24 @@ public class SupportControllerTests {
     @Autowired
     private SupportRepository supportRepository;
 
+    @Rule
+    public JUnitRestDocumentation restDocumentation = new JUnitRestDocumentation();
+    @Autowired
+    private WebApplicationContext context;
+
     private static final List<String> institutes =
             Arrays.asList(new String[]{"주택도시기금", "국민은행", "우리은행", "신한은행", "한국시티은행",
             "하나은행", "농협은행/수협은행", "외환은행", "기타은행"});
 
     private static final int MIN_RECORD_VALUES_LENGTH = 11;
+
+    @Before
+    public void setUp() {
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(this.context)
+                .apply(documentationConfiguration(this.restDocumentation))
+                .alwaysDo(document("{method-name}/{class-name}"))
+                .build();
+    }
 
     @Test
     public void CSV_레코드에_해당하는_형식의_CREATE_API_호출() throws Exception {
@@ -70,11 +93,14 @@ public class SupportControllerTests {
             //exception이 발생하지 않은 파일에서만 각 레코에드에 대한 /supports/bulk POST 메소드를 통한 생성 처리
 
         } catch (FileNotFoundException e) {
-            log.error("filen not found", e);
+            log.error("filen not found = {}", e);
+            throw e;
         } catch (IOException e) {
-            log.error("io exception occur", e);
-        } catch (InvalidArgumentException e) {
-            log.error("InvalidArgumentException occur", e);
+            log.error("io exception occur = {}", e);
+            throw e;
+        } catch (ValidationException e) {
+            log.error("ValidationException occur = {}", e);
+            throw e;
         }
 
         long startMillis = System.currentTimeMillis();
@@ -83,8 +109,11 @@ public class SupportControllerTests {
 
         for (SupportBulkInfo supportBulkInfo : supportBulkInfos) {
             String jsonSupportBulkbody = objectMapper.writeValueAsString(supportBulkInfo);
-            mockMvc.perform(post("/supports/bulk").contentType(MediaType.APPLICATION_JSON)
+            ResultActions resultActions = mockMvc.perform(post("/supports/bulk").contentType(MediaType.APPLICATION_JSON)
                     .content(jsonSupportBulkbody)).andExpect(status().isCreated());
+            if (requestCount == 0) {
+                resultActions.andDo(document("support"));
+            }
             requestCount++;
         }
         long endMillis = System.currentTimeMillis();
@@ -99,11 +128,13 @@ public class SupportControllerTests {
         Assert.assertEquals(expectedSupportRecordCount, countOfSupports);
     }
 
-    private SupportBulkInfo convertCsvRecordToSupportBulInfo(CSVRecord csvRecord) throws InvalidArgumentException {
+
+
+    private SupportBulkInfo convertCsvRecordToSupportBulInfo(CSVRecord csvRecord) throws ValidationException {
 
         log.info("csvRecord length= {}", csvRecord.size());
         if (csvRecord.size() < MIN_RECORD_VALUES_LENGTH) {
-            throw new InvalidArgumentException(new String[]{ csvRecord.toString() });
+            throw new ValidationException(csvRecord.toString());
         }
 
         SupportBulkInfo supportBulkInfo = new SupportBulkInfo();
@@ -133,7 +164,8 @@ public class SupportControllerTests {
         String jsonBody = objectMapper.writeValueAsString(support);
         String responseBody = mockMvc.perform(post("/supports").contentType(MediaType.APPLICATION_JSON)
             .content(jsonBody)).andExpect(status().isCreated())
-            .andReturn().getResponse().getContentAsString();
+                .andDo(document("support"))
+                .andReturn().getResponse().getContentAsString();
 
         log.info("responseBody=[{}]", responseBody);
 
@@ -146,15 +178,135 @@ public class SupportControllerTests {
                 .andExpect(jsonPath("year").value(support.getYear()))
                 .andExpect(jsonPath("month").value(support.getMonth()))
                 .andExpect(jsonPath("bank").isString())
-                .andExpect(jsonPath("amount").value(support.getAmount()));
+                .andExpect(jsonPath("amount").value(support.getAmount()))
+                .andDo(document("support"));
+    }
+
+    @Test
+    public void 연도_월_기관에_해당하는_지원금_생성_잘못된_년도입력_400_ERROR() throws Exception {
+        Support support = new Support();
+        support.setYear(0);
+        support.setMonth(10);
+        support.setBank("외환은행");
+        support.setAmount(1000);
+        String jsonBody = objectMapper.writeValueAsString(support);
+        String responseBody = mockMvc.perform(post("/supports").contentType(MediaType.APPLICATION_JSON)
+                .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("message").isString())
+                .andDo(document("support"))
+                .andReturn().getResponse().getContentAsString();
+
+        log.info("responseBody=[{}]", responseBody);
+
+        support.setYear(10000);
+        support.setMonth(1);
+        support.setBank("외환은행");
+        support.setAmount(1000);
+        jsonBody = objectMapper.writeValueAsString(support);
+        responseBody = mockMvc.perform(post("/supports").contentType(MediaType.APPLICATION_JSON)
+                .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("message").isString())
+                .andDo(document("support"))
+                .andReturn().getResponse().getContentAsString();
+
+        log.info("responseBody=[{}]", responseBody);
+    }
+
+    @Test
+    public void 연도_월_기관에_해당하는_지원금_생성_잘못된_월_입력_400_ERROR() throws Exception {
+        Support support = new Support();
+        support.setYear(2018);
+        support.setMonth(0);
+        support.setBank("외환은행");
+        support.setAmount(1000);
+        String jsonBody = objectMapper.writeValueAsString(support);
+        String responseBody = mockMvc.perform(post("/supports").contentType(MediaType.APPLICATION_JSON)
+                .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("message").isString())
+                .andDo(document("support"))
+                .andReturn().getResponse().getContentAsString();
+
+        log.info("responseBody=[{}]", responseBody);
+
+        support.setYear(2018);
+        support.setMonth(13);
+        support.setBank("외환은행");
+        support.setAmount(1000);
+        jsonBody = objectMapper.writeValueAsString(support);
+        responseBody = mockMvc.perform(post("/supports").contentType(MediaType.APPLICATION_JSON)
+                .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("message").isString())
+                .andDo(document("support"))
+                .andReturn().getResponse().getContentAsString();
+
+        log.info("responseBody=[{}]", responseBody);
+    }
+
+    @Test
+    public void 연도_월_기관에_해당하는_지원금_생성_잘못된_은행명_입력_400_ERROR() throws Exception {
+        Support support = new Support();
+        support.setYear(2018);
+        support.setMonth(10);
+        support.setBank(""); //EMPTY STRING
+        support.setAmount(1000);
+        String jsonBody = objectMapper.writeValueAsString(support);
+        String responseBody = mockMvc.perform(post("/supports")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("message").isString())
+                .andReturn().getResponse().getContentAsString();
+
+        log.info("responseBody=[{}]", responseBody);
+
+        support.setYear(2018);
+        support.setMonth(10);
+        support.setBank("\t \t"); //WHITE_SPACE_STRING
+        support.setAmount(1000);
+        jsonBody = objectMapper.writeValueAsString(support);
+        responseBody = mockMvc.perform(post("/supports")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("message").isString())
+                .andDo(document("support"))
+                .andReturn().getResponse().getContentAsString();
+
+        log.info("responseBody=[{}]", responseBody);
+    }
+
+    @Test
+    public void 연도_월_기관에_해당하는_지원금_생성_잘못된_지원금입력() throws Exception {
+        Support support = new Support();
+        support.setYear(2018);
+        support.setMonth(10);
+        support.setBank("외환은행"); //EMPTY STRING
+        support.setAmount(-1);
+        String jsonBody = objectMapper.writeValueAsString(support);
+        String responseBody = mockMvc.perform(post("/supports").contentType(MediaType.APPLICATION_JSON)
+                .content(jsonBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("message").isString())
+                .andDo(document("support"))
+                .andReturn().getResponse().getContentAsString();
+
+        log.info("responseBody=[{}]", responseBody);
     }
 
     @Test
     public void 연도_월_기관에_해당하는_지원금_삭제_404_ERROR() throws Exception {
-        mockMvc.perform(delete("/supports/" + "testidkk"))
+        mockMvc.perform(delete("/supports/" + "testidkk")
+                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("code").value(HttpStatus.NOT_FOUND.value()))
-                .andExpect(jsonPath("message").isString());
+                .andExpect(jsonPath("message").isString())
+                .andDo(document("support"));
     }
 
     @Test
@@ -162,7 +314,8 @@ public class SupportControllerTests {
         mockMvc.perform(get("/supports/totalsOfYears"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("name").value("주택기금정보"))
-                .andExpect(jsonPath("supports_of_years").exists());
+                .andExpect(jsonPath("supports_of_years").exists())
+                .andDo(document("support"));
     }
 
     @Test
@@ -170,7 +323,8 @@ public class SupportControllerTests {
         String bankName = "외환은행";
         mockMvc.perform(get("/supports/amountMinMax?bank=" + bankName))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("bank").value(bankName));
+                .andExpect(jsonPath("bank").value(bankName))
+                .andDo(document("support"));
     }
 
     @Test
@@ -178,7 +332,7 @@ public class SupportControllerTests {
         mockMvc.perform(get("/supports/topAmountBankOfYear"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("year").exists())
-                .andExpect(jsonPath("bank").exists());
+                .andExpect(jsonPath("bank").exists())
+                .andDo(document("support"));
     }
-
 }
