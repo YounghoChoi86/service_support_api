@@ -116,7 +116,7 @@ public class SupportService {
                             long totalAmount = e.stream().mapToLong(k -> k.getAmount()).sum();
                             Map<String, Long>  detailAmount = e.stream()
                                     .map(support -> {
-                                        log.info("support={}", support);
+                                        log.debug("support={}", support);
                                         support.setBank(instituteCodeToNameMap.get(support.getBank()));
                                         return support;
                                     })
@@ -146,13 +146,14 @@ public class SupportService {
         List<Support> amountSumOfYearBank = groupAmounts.getMappedResults();
 
         //TODO compare 표현을 줄일 수 있으면 줄이자
-        Support support =  amountSumOfYearBank.stream().max((e1, e2)->
-            Long.compare(e1.getAmount(), e2.getAmount())
-        ).orElseThrow(() -> new SupportNotFouncException("최대 금액을 찾을 수 없습니다."));
+        Support support =  amountSumOfYearBank.stream()
+                .max((e1, e2)-> Long.compare(e1.getAmount(), e2.getAmount()))
+                .orElseThrow(() -> new SupportNotFouncException("최대 금액을 찾을 수 없습니다."));
 
         Institute institute =
                 instituteRepository.findById(support.getBank())
                 .orElseThrow(() -> new InstituteNotFoundException(support.getBank()));
+
         log.info("maxAmountOfYear={}", support.getAmount());
 
         return new TopAmountBankOfYear(support.getYear(), institute.getInstituteName());
@@ -166,7 +167,7 @@ public class SupportService {
         AggregationOperation match = Aggregation.match(Criteria.where("bank").is(instituteCode));
 
         Aggregation agg =
-                newAggregation(match, group("year", "bank").sum("amount").as("amount"),
+                newAggregation(match, group("year", "bank").avg("amount").as("amount"),
                         sort(Sort.Direction.DESC, "year", "bank"));
 
         AggregationResults<SupportAmount> groupAmounts = mongoTemplate
@@ -179,8 +180,27 @@ public class SupportService {
         }
         List<SupportAmount> minMaxSupportAmounts = new ArrayList<>(2);
         //TODO compare 표현을 줄일 수 있으면 줄이자
-        minMaxSupportAmounts.add(supportAmounts.stream().min((e1, e2) -> Long.compare(e1.getAmount(), e2.getAmount())).orElse(new SupportAmount()));
-        minMaxSupportAmounts.add(supportAmounts.stream().max((e1, e2) -> Long.compare(e1.getAmount(), e2.getAmount())).orElse(new SupportAmount()));
+
+        SupportAmount minSupportAmount =
+                supportAmounts.stream()
+                        .min((e1, e2) -> Double.compare(e1.getAmount(), e2.getAmount()))
+                        .orElse(new SupportAmount());
+
+        minSupportAmount.setRoundedAmount(Math.round(minSupportAmount.getAmount()));
+        minMaxSupportAmounts.add(minSupportAmount);
+
+
+        SupportAmount maxSupportAmount = supportAmounts.stream()
+                .max((e1, e2) -> Double.compare(e1.getAmount(), e2.getAmount()))
+                .orElse(new SupportAmount());
+
+        log.info("minSupportAmount : {} ", minSupportAmount);
+        log.info("maxSupportAmount : {} ", maxSupportAmount);
+        maxSupportAmount.setRoundedAmount(Math.round(maxSupportAmount.getAmount()));
+
+        minMaxSupportAmounts
+                .add(maxSupportAmount);
+
         AmountMinMaxOfBank amountMinMaxOfBank = new AmountMinMaxOfBank();
         amountMinMaxOfBank.setBank(bankName);
         amountMinMaxOfBank.setSupportAmount(minMaxSupportAmounts);
