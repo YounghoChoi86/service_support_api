@@ -14,7 +14,7 @@ import java.util.Map;
 @Setter
 public class SupportsOfYear {
     @JsonProperty("year")
-    private int year;
+    private String year;
     @JsonProperty("total_amount")
     private long totalAmount;
     @JsonProperty("detail_amount")
